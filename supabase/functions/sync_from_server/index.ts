@@ -4,7 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.5.0";
 
 interface DbItem {
   id: string;
-  updatedAt: string;
+  updatedAt: number;
   [key: string]: any;
 }
 
@@ -66,13 +66,15 @@ serve((req) => corsHandler(req, async (req) => {
     }
 
     // Hole last_sync_time aus der Anfrage
-    const { last_sync_time } = await req.json();
+    let { last_sync_time } = await req.json();
+
     if (!last_sync_time) {
       return new Response(
         JSON.stringify({ error: 'Last sync time is required' }),
         { status: 400 }
       );
     }
+    last_sync_time = parseInt(last_sync_time)
 
     // Hole Benutzerdaten
     const { data: userData, error: fetchError } = await supabaseAdmin
@@ -125,17 +127,17 @@ serve((req) => corsHandler(req, async (req) => {
       deleteditems: userData.deleteditems || [],
     };
 
-    responseData.openings = responseData.openings.filter(o => new Date(o.updatedAt) > new Date(last_sync_time))
-    responseData.chapters = responseData.chapters.filter(o => new Date(o.updatedAt) > new Date(last_sync_time))
-    responseData.variants = responseData.variants.filter(o => new Date(o.updatedAt) > new Date(last_sync_time))
+    responseData.openings = responseData.openings.filter(o => o.updatedAt > last_sync_time)
+    responseData.chapters = responseData.chapters.filter(o => o.updatedAt > last_sync_time)
+    responseData.variants = responseData.variants.filter(o => o.updatedAt > last_sync_time)
     const moves: DbItem[] = []
     for (const variant of responseData.variants) {
       const v_moves = responseData.moves.filter(m => m.variantId === variant.id)
       moves.push(...v_moves)
     }
     responseData.moves = moves;
-    responseData.settings = responseData.settings.filter(o => new Date(o.updatedAt) > new Date(last_sync_time))
-    responseData.deleteditems = responseData.deleteditems.filter(o => new Date(o.updatedAt) > new Date(last_sync_time))
+    responseData.settings = responseData.settings.filter(o => o.updatedAt > last_sync_time)
+    responseData.deleteditems = responseData.deleteditems.filter(o => o.updatedAt > last_sync_time)
 
     return new Response(
       JSON.stringify({ data: responseData }),

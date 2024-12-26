@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.5.0";
 
 interface DbItem {
   id: string;
-  updatedAt: string;
+  updatedAt: number;
   [key: string]: any;
 }
 
@@ -11,7 +11,7 @@ interface DeletedItem {
   id: string;
   tableName: string;
   recordId: string;
-  updatedAt: string;
+  updatedAt: number;
 }
 
 interface SyncRequest {
@@ -155,7 +155,7 @@ function mergeData(currentData: SyncRequest, syncData: SyncRequest) {
 
     if (existingItemIndex !== -1) {
       const existingItem = currentItems[existingItemIndex];
-      if (new Date(deleteItem.updatedAt) > new Date(existingItem.updatedAt)) {
+      if (deleteItem.updatedAt > existingItem.updatedAt) {
         currentItems.splice(existingItemIndex, 1);
       }
     }
@@ -172,7 +172,7 @@ function mergeData(currentData: SyncRequest, syncData: SyncRequest) {
       let updateMoves = false;
       if (existingItemIndex !== -1) {
         const existingItem = currentItems[existingItemIndex];
-        if (new Date(newItem.updatedAt) > new Date(existingItem.updatedAt)) {
+        if (newItem.updatedAt > existingItem.updatedAt) {
           currentItems[existingItemIndex] = newItem;
           updateMoves = true;
         }
