@@ -1,14 +1,20 @@
 import { serve } from "https://deno.land/std@0.192.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.5.0";
 
+
+interface DbItem {
+  id: string;
+  updatedAt: string;
+  [key: string]: any;
+}
+
 interface UserData {
-  openings: any[];
-  chapters: any[];
-  variants: any[];
-  moves: any[];
-  settings: any[];
-  deleteditems: any[];
-  updated_at: string;
+  openings: DbItem[];
+  chapters: DbItem[];
+  variants: DbItem[];
+  moves: DbItem[];
+  settings: DbItem[];
+  deleteditems: DbItem[];
 }
 
 async function corsHandler(req: Request, handler: (req: Request) => Promise<Response>) {
@@ -99,7 +105,7 @@ serve((req) => corsHandler(req, async (req) => {
     }
 
     // Falls keine Daten oder kein Update seit letzter Synchronisation
-    if (!userData || new Date(userData.updated_at) <= new Date(last_sync_time)) {
+    if (!userData) {
       return new Response(
         JSON.stringify({ data: null }),
         {
@@ -117,8 +123,19 @@ serve((req) => corsHandler(req, async (req) => {
       moves: userData.moves || [],
       settings: userData.settings || [],
       deleteditems: userData.deleteditems || [],
-      updated_at: userData.updated_at
     };
+
+    responseData.openings = responseData.openings.filter(o => new Date(o.updatedAt) > new Date(last_sync_time))
+    responseData.chapters = responseData.chapters.filter(o => new Date(o.updatedAt) > new Date(last_sync_time))
+    responseData.variants = responseData.variants.filter(o => new Date(o.updatedAt) > new Date(last_sync_time))
+    const moves: DbItem[] = []
+    for (const variant of responseData.variants) {
+      const v_moves = responseData.moves.filter(m => m.variantId === variant.id)
+      moves.push(...v_moves)
+    }
+    responseData.moves = moves;
+    responseData.settings = responseData.settings.filter(o => new Date(o.updatedAt) > new Date(last_sync_time))
+    responseData.deleteditems = responseData.deleteditems.filter(o => new Date(o.updatedAt) > new Date(last_sync_time))
 
     return new Response(
       JSON.stringify({ data: responseData }),
