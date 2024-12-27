@@ -9,7 +9,7 @@ interface DbItem {
 
 interface DeletedItem {
   id: string;
-  tableName: string;
+  tableName: 'openings' | 'chapters' | 'variants';
   recordId: string;
   updatedAt: number;
 }
@@ -157,14 +157,16 @@ function mergeData(currentData: SyncRequest, syncData: SyncRequest) {
       const existingItem = currentItems[existingItemIndex];
       if (deleteItem.updatedAt > existingItem.updatedAt) {
         currentItems.splice(existingItemIndex, 1);
+        //lösche moves der variante
+        if (deleteItem.tableName === 'variants') {
+          mergedData.moves =  mergedData.moves.filter(m => m.variantId !== existingItem.id)
+        }
       }
     }
   }
 
-  let moves = (currentData.moves || [])
-
   // Verarbeite Updates/Inserts für jede Tabelle
-  for (const table of ['openings', 'chapters', 'variants', 'settings'] as const) {
+  for (const table of ['openings', 'chapters', 'variants', 'settings', 'deleteditems'] as const) {
     for (const newItem of syncData[table]) {
       const currentItems = mergedData[table];
       const existingItemIndex = currentItems.findIndex(
@@ -185,14 +187,12 @@ function mergeData(currentData: SyncRequest, syncData: SyncRequest) {
 
       // Die alten moves durch die neuen ersetzen
       if (table === 'variants' && updateMoves) {
-        moves = moves.filter(m => m.variantId !== newItem.id);
+        mergedData.moves = mergedData.moves.filter(m => m.variantId !== newItem.id);
         const newMoves = syncData['moves'].filter(m => m.variantId === newItem.id)
-        moves.push(...newMoves)
+        mergedData.moves.push(...newMoves)
       }
     }
   }
-
-  mergedData.moves = moves
 
   return mergedData;
 }
