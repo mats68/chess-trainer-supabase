@@ -161,6 +161,8 @@ function mergeData(currentData: SyncRequest, syncData: SyncRequest) {
     }
   }
 
+  let moves = (currentData.moves || [])
+
   // Verarbeite Updates/Inserts für jede Tabelle
   for (const table of ['openings', 'chapters', 'variants', 'settings'] as const) {
     for (const newItem of syncData[table]) {
@@ -183,14 +185,14 @@ function mergeData(currentData: SyncRequest, syncData: SyncRequest) {
 
       // Die alten moves durch die neuen ersetzen
       if (table === 'variants' && updateMoves) {
-        let currentMoves = mergedData.moves || [];
-        currentMoves = currentMoves.filter(m => m.variantId !== newItem.id);
+        moves = moves.filter(m => m.variantId !== newItem.id);
         const newMoves = syncData['moves'].filter(m => m.variantId === newItem.id)
-        currentMoves.push(...newMoves)
+        moves.push(...newMoves)
       }
     }
   }
 
+  mergedData.moves = moves
 
   return mergedData;
 }
