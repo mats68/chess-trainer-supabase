@@ -1,6 +1,4 @@
-import { serve } from "https://deno.land/std@0.192.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.5.0";
-
+import { createClient } from "jsr:@supabase/supabase-js@2"
 
 interface DbItem {
   id: string;
@@ -44,7 +42,7 @@ async function corsHandler(req: Request, handler: (req: Request) => Promise<Resp
   });
 }
 
-serve((req) => corsHandler(req, async (req) => {
+Deno.serve((req) => corsHandler(req, async (req) => {
   try {
     // Erstelle Supabase Admin Client
     const supabaseAdmin = createClient(
