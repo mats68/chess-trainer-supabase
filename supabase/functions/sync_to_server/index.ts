@@ -6,6 +6,19 @@ interface DbItem {
   [key: string]: any;
 }
 
+enum UpdateTyp {
+  Insert = 1,
+  Update = 2,
+  Delete = 3,
+}
+
+interface UpdateItem {
+  id: string;
+  table: 'openings' | 'chapters' | 'variants' | 'settings' | 'deleteditems',
+  u: UpdateTyp
+}
+
+
 interface DeletedItem {
   id: string;
   tableName: 'openings' | 'chapters' | 'variants';
@@ -80,6 +93,7 @@ Deno.serve((req) => corsHandler(req, async (req) => {
     if (fetchError && fetchError.code !== 'PGRST116') {
       throw fetchError;
     }
+    const updateItems: UpdateItem[] = []
 
     let newData;
     if (!currentData) {
@@ -94,7 +108,7 @@ Deno.serve((req) => corsHandler(req, async (req) => {
       };
     } else {
       // Update existierender Daten
-      newData = mergeData(currentData, syncData);
+      newData = mergeData(currentData, syncData, updateItems);
     }
 
     // Update oder Insert in die Datenbank
@@ -114,7 +128,7 @@ Deno.serve((req) => corsHandler(req, async (req) => {
     if (writeError) throw writeError;
 
     return new Response(
-      JSON.stringify({ success: true }),
+      JSON.stringify({ data: {success: true, operation, updateItems}  }),
       {
         headers: { 'Content-Type': 'application/json' },
         status: 200
@@ -132,7 +146,7 @@ Deno.serve((req) => corsHandler(req, async (req) => {
   }
 }));
 
-function mergeData(currentData: SyncRequest, syncData: SyncRequest) {
+function mergeData(currentData: SyncRequest, syncData: SyncRequest, updateItems: UpdateItem[]) {
   // Initialisiere Arrays mit aktuellen Daten
   const mergedData = {
     openings: [...(currentData.openings || [])],
@@ -155,6 +169,7 @@ function mergeData(currentData: SyncRequest, syncData: SyncRequest) {
     if (existingItemIndex !== -1) {
       const existingItem = currentItems[existingItemIndex];
       if (deleteItem.updatedAt > existingItem.updatedAt) {
+        updateItems.push({id: existingItem.id, table: deleteItem.tableName, u: UpdateTyp.Delete})
         currentItems.splice(existingItemIndex, 1);
         //lösche moves der variante
         if (deleteItem.tableName === 'variants') {
@@ -176,10 +191,12 @@ function mergeData(currentData: SyncRequest, syncData: SyncRequest) {
       if (existingItemIndex !== -1) {
         const existingItem = currentItems[existingItemIndex];
         if (newItem.updatedAt > existingItem.updatedAt) {
+          updateItems.push({id: newItem.id, table: table, u: UpdateTyp.Update})
           currentItems[existingItemIndex] = newItem;
           updateMoves = true;
         }
       } else {
+        updateItems.push({id: newItem.id, table: table, u: UpdateTyp.Insert})
         currentItems.push(newItem);
         updateMoves = true;
       }
