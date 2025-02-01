@@ -210,5 +210,10 @@ function mergeData(currentData: SyncRequest, syncData: SyncRequest, updateItems:
     }
   }
 
+  // Lösche deleteditems die älter als ein Monat sind
+  const oneMonthAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
+  mergedData.deleteditems = mergedData.deleteditems.filter(item => item.updatedAt > oneMonthAgo);
+
+
   return mergedData;
 }
