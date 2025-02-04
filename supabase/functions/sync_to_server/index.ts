@@ -1,3 +1,4 @@
+//sync_to_server
 import { createClient } from "jsr:@supabase/supabase-js@2"
 
 interface DbItem {
