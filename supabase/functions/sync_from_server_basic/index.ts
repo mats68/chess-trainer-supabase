@@ -1,4 +1,4 @@
-//sync_from_server
+//sync_from_server_basic
 import { createClient } from "jsr:@supabase/supabase-js@2"
 
 interface DbItem {
@@ -10,8 +10,6 @@ interface DbItem {
 interface UserData {
   openings: DbItem[];
   chapters: DbItem[];
-  variants: DbItem[];
-  moves: DbItem[];
   settings: DbItem[];
   deleteditems: DbItem[];
 }
@@ -77,7 +75,7 @@ Deno.serve((req) => corsHandler(req, async (req) => {
 
     // Hole Benutzerdaten
     const { data: userData, error: fetchError } = await supabaseAdmin
-      .from('user_data')
+      .from('user_data_basic')
       .select('*')
       .eq('user_id', user.id)
       .single();
@@ -90,8 +88,6 @@ Deno.serve((req) => corsHandler(req, async (req) => {
             data: {
               openings: [],
               chapters: [],
-              variants: [],
-              moves: [],
               settings: [],
               deleteditems: []
             }
@@ -120,21 +116,12 @@ Deno.serve((req) => corsHandler(req, async (req) => {
     const responseData: UserData = {
       openings: userData.openings || [],
       chapters: userData.chapters || [],
-      variants: userData.variants || [],
-      moves: userData.moves || [],
       settings: userData.settings || [],
       deleteditems: userData.deleteditems || [],
     };
 
     responseData.openings = responseData.openings.filter(o => o.updatedAt > last_sync_time)
     responseData.chapters = responseData.chapters.filter(o => o.updatedAt > last_sync_time)
-    responseData.variants = responseData.variants.filter(o => o.updatedAt > last_sync_time)
-    const moves: DbItem[] = []
-    for (const variant of responseData.variants) {
-      const v_moves = responseData.moves.filter(m => m.variantId === variant.id)
-      moves.push(...v_moves)
-    }
-    responseData.moves = moves;
     responseData.settings = responseData.settings.filter(o => o.updatedAt > last_sync_time)
     responseData.deleteditems = responseData.deleteditems.filter(o => o.updatedAt > last_sync_time)
 

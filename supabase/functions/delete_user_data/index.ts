@@ -55,12 +55,21 @@ Deno.serve((req) => corsHandler(req, async (req) => {
 
     // Lösche die user_data des authentifizierten Users
     const { error: deleteError } = await supabaseAdmin
-      .from('user_data')
+      .from('user_data_basic')
       .delete()
       .eq('user_id', user.id);
 
     if (deleteError) {
       throw deleteError;
+    }
+
+    const { error: deleteError_variants } = await supabaseAdmin
+      .from('user_data_variants')
+      .delete()
+      .eq('user_id', user.id);
+
+    if (deleteError_variants) {
+      throw deleteError_variants;
     }
 
     return new Response(
