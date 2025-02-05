@@ -99,10 +99,9 @@ Deno.serve((req) =>
           deleteditems: syncData.deleteditems,
         };
       } else {
-        // Update existierender Daten
         for (const deleteItem of syncData.deleteditems) {
           if (deleteItem.tableName === "variants") {
-            //Lösche varianten
+            //Lösche Varianten
             const { error: deleteError } = await supabaseAdmin
               .from("user_data_variants")
               .delete()
@@ -110,8 +109,10 @@ Deno.serve((req) =>
               .eq("variant_id", deleteItem.recordId);
 
             if (deleteError) throw deleteError;
+            updateItems.push({ id: deleteItem.recordId, table: "variants", u: UpdateTyp.Delete });            
           }
         }
+        // Update existierender Daten
         newData = await mergeData(currentData, syncData, updateItems);
       }
 
@@ -165,7 +166,7 @@ async function mergeData(currentData: SyncRequest, syncData: SyncRequest, update
           currentItems.splice(existingItemIndex, 1);
         }
       }
-    }
+    } 
   }
 
   // Verarbeite Updates/Inserts für jede Tabelle
