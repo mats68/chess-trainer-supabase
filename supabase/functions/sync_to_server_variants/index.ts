@@ -16,6 +16,17 @@ interface VariantSyncRequest {
   variants: VariantSync[];
 }
 
+enum UpdateTyp {
+  Insert = 1,
+  Update = 2
+}
+
+interface UpdateItem {
+  id: string;
+  u: UpdateTyp;
+}
+
+
 async function corsHandler(req: Request, handler: (req: Request) => Promise<Response>) {
   // Handle OPTIONS request for CORS preflight
   if (req.method === "OPTIONS") {
@@ -60,6 +71,8 @@ Deno.serve((req) =>
 
       const { variants }: VariantSyncRequest = await req.json();
 
+      const updateItems: UpdateItem[] = [];
+
       for (const variantSync of variants) {
         const { data: existingVariant } = await supabaseAdmin
           .from("user_data_variants")
@@ -86,6 +99,8 @@ Deno.serve((req) =>
               console.log(variantError);
               throw variantError;
             }
+            updateItems.push({ id: variantSync.variant.id, u: UpdateTyp.Update });
+
           }
         } else {
           // Insert
@@ -101,6 +116,8 @@ Deno.serve((req) =>
             console.log(variantError);
             throw variantError;
           }
+          updateItems.push({ id: variantSync.variant.id, u: UpdateTyp.Insert });
+
         }
       }
 
@@ -108,6 +125,7 @@ Deno.serve((req) =>
         JSON.stringify({
           data: {
             success: true,
+            updateItems
           },
         }),
         {
