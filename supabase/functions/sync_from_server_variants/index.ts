@@ -1,12 +1,10 @@
 //sync_from_server_variants
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-const BATCH_SIZE = 50; // Anzahl der Varianten pro Batch
-
 interface SyncRequest {
   last_sync_time: string;
-  batch_size?: number; // Optional - erlaubt Client die Batch-Größe anzupassen
-  last_batch_id?: string; // Für Pagination - UUID der letzten Variante vom vorherigen Batch
+  batch_size: number;
+  offset?: number;
 }
 
 async function corsHandler(req: Request, handler: (req: Request) => Promise<Response>) {
@@ -47,45 +45,35 @@ Deno.serve((req) =>
         return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
       }
 
-      const { last_sync_time, batch_size = BATCH_SIZE, last_batch_id } = (await req.json()) as SyncRequest;
+      const { last_sync_time, batch_size, offset = 0 } = (await req.json()) as SyncRequest;
 
-      let query = supabaseAdmin
-        .from("user_data_variants")
-        .select("*")
-        .eq("user_id", user.id)
-        .gt("updated_at", parseInt(last_sync_time))
-        .order("updated_at", { ascending: true })
-        .limit(batch_size);
-
-      // Wenn last_batch_id vorhanden, starte nach diesem Datensatz
-      if (last_batch_id) {
-        const { data: lastItem } = await supabaseAdmin.from("user_data_variants").select("updated_at").eq("id", last_batch_id).single();
-
-        if (lastItem) {
-          query = query.gt("updated_at", lastItem.updated_at);
-        }
-      }
-
-      const { data: variants, error: fetchError } = await query;
-
-      if (fetchError) throw fetchError;
-
-      // Prüfe ob es noch mehr Daten gibt
+      // Hole die Gesamtanzahl der zu synchronisierenden Varianten
       const { count: totalCount } = await supabaseAdmin
         .from("user_data_variants")
         .select("*", { count: "exact", head: true })
         .eq("user_id", user.id)
         .gt("updated_at", parseInt(last_sync_time));
 
-      const hasMore = totalCount > (variants?.length || 0) + (last_batch_id ? batch_size : 0);
-      const lastId = variants && variants.length > 0 ? variants[variants.length - 1].id : null;
+      // Hole den aktuellen Batch mit offset
+      const { data: variants, error: fetchError } = await supabaseAdmin
+        .from("user_data_variants")
+        .select("*")
+        .eq("user_id", user.id)
+        .gt("updated_at", parseInt(last_sync_time))
+        .order("id", { ascending: true }) // Sortiere nach id statt updated_at
+        .range(offset, offset + batch_size - 1);
+
+      if (fetchError) throw fetchError;
+
+      const hasMore = totalCount > (offset + (variants?.length || 0));
+      const nextOffset = offset + batch_size;
 
       return new Response(
         JSON.stringify({
           data: {
             variants: variants || [],
             has_more: hasMore,
-            last_batch_id: lastId,
+            next_offset: hasMore ? nextOffset : null,
             total_count: totalCount,
           },
         }),
